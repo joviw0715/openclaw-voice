@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./routes:/app/routes
+      - ./server.js:/app/server.js
+      - ./package.json:/app/package.json
+    environment:
+      - NODE_ENV=development
+    command: npm run dev

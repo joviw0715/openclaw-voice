@@ -1,0 +1,10 @@
+node_modules/
+.env
+npm-debug.log
+*.log
+.DS_Store
+*.mp3
+*.wav
+/tmp/audio-transcribe/
+dist/
+build/
