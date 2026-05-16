@@ -3,7 +3,6 @@
  * Handles incoming call events and returns TwiML with Media Stream URL
  */
 
-import { Processor } from 'whisper-node';
 import axios from 'axios';
 
 export async function webhookHandler(req, res) {
@@ -33,7 +32,7 @@ export async function webhookHandler(req, res) {
 
     // TwiML Response with Media Stream
     // Replace with your actual domain
-    const domain = process.env.DOMAIN || 'openclaw-yotta.zeabur.app';
+    const domain = process.env.DOMAIN || 'openclaw-voice.zeabur.app';
     const streamUrl = `wss://${domain}/voice/stream?CallSid=${CallSid}&From=${From}`;
 
     const twiML = `<?xml version="1.0" encoding="UTF-8"?>
