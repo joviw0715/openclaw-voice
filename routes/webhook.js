@@ -1,9 +1,16 @@
 /**
  * Twilio HTTP Webhook Handler
- * Handles incoming call events and returns TwiML with Media Stream URL
+ * Handles incoming and outbound call events and returns TwiML with Media Stream URL
  */
 
-import axios from 'axios';
+function xmlEscape(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
 
 export async function webhookHandler(req, res) {
   try {
@@ -16,46 +23,46 @@ export async function webhookHandler(req, res) {
       CallStatus
     } = req.body;
 
-    console.log(`📞 Incoming call: ${CallSid}`);
+    // Twilio status callbacks include CallbackSource=call-progress-events.
+    // Return early without TwiML for these.
+    if (req.body.CallbackSource === 'call-progress-events') {
+      console.log(`📊 Status callback for ${CallSid}: ${CallStatus}`);
+      return res.status(200).end();
+    }
+
+    console.log(`📞 Call webhook: ${CallSid}`);
     console.log(`  From: ${From}`);
     console.log(`  To: ${To}`);
     console.log(`  CallerName: ${CallerName || 'Unknown'}`);
     console.log(`  Status: ${CallStatus}`);
     console.log(`  CallerPosition: ${CallerPosition}`);
 
-    // Check if this is a CallStatus callback or initial call
-    const isStatusCallback = req.body.CallStatus !== undefined;
-    if (isStatusCallback) {
-      console.log(`  Custom SMS StatusCallback: ${req.body.CallStatus}`);
-      return res.status(200).end();
-    }
-
-    // TwiML Response with Media Stream
-    // Replace with your actual domain
     const domain = process.env.DOMAIN || 'openclaw-voice.zeabur.app';
-    const streamUrl = `wss://${domain}/voice/stream?CallSid=${CallSid}&From=${From}`;
+    const direction = ['inbound', 'outbound'].includes(req.query.direction)
+      ? req.query.direction
+      : 'inbound';
+    const streamUrl = `wss://${domain}/voice/stream?CallSid=${encodeURIComponent(CallSid || '')}&From=${encodeURIComponent(From || '')}&Direction=${direction}`;
+
+    // Optional spoken greeting for outbound calls
+    const greeting = req.query.greeting ? String(req.query.greeting) : null;
+    const sayBlock = greeting
+      ? `\n  <Say voice="Polly.Joanna">${xmlEscape(greeting)}</Say>`
+      : '';
 
     const twiML = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
+<Response>${sayBlock}
   <Start>
-    <Stream url="${streamUrl}" />
+    <Stream url="${xmlEscape(streamUrl)}" />
   </Start>
   <Redirect method="GET" />
 </Response>`;
 
-    // Add status callback to return events to webhook
-    const statusCallbackUrl = `https://${domain}/voice/webhook`;
-    const statusCallbackMethod = 'POST';
-
-    console.log(`✅ Sending TwiML with Media Stream URL to Twilio`);
+    console.log(`✅ Sending TwiML with Media Stream URL to Twilio (${direction})`);
     res.set('Content-Type', 'text/xml');
     res.send(twiML);
 
-    // Send status update to webhook (in a real implementation, you'd emit this event)
-    console.log(`📊 Status callback: ${statusCallbackUrl}`);
-
   } catch (err) {
     console.error('❌ Webhook handler error:', err);
-    res.status(500).xml('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+    res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
   }
 }
