@@ -80,7 +80,7 @@ export async function transcribeAudio(audioBuffer, format = 'mulaw') {
 
     // Pre-processing: convert to WAV 16kHz mono using ffmpeg via execFile (no shell)
     const wavPath = join(tmpDir, `audio-${Date.now()}.wav`);
-    const ffmpegInputFormat = format === 'mulaw' ? 'u8' : 's16le';
+    const ffmpegInputFormat = format === 'mulaw' ? 'mulaw' : 's16le';
     await execFileAsync('ffmpeg', [
       '-y', '-ar', '16000', '-ac', '1',
       '-f', ffmpegInputFormat,
