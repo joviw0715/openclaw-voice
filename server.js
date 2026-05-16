@@ -19,6 +19,8 @@ app.use(express.json());
 
 // Routes
 app.post('/voice/webhook', webhookHandler);
+app.post('/voice/stt', sttHandler);
+app.post('/voice/tts', ttsHandler);
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', service: 'openclaw-voice' });
 });
@@ -43,57 +45,9 @@ const wss = new WebSocketServer({
   path: '/voice/stream'
 });
 
-console.log(`✅ WebSocket server listening on /voice/stream`);
-
-// Handle WebSocket connections
+// Handle WebSocket connections — delegate to stream route handler
 wss.on('connection', (ws, req) => {
-  console.log(`🔗 WebSocket connected from ${req.socket.remoteAddress}`);
-
-  // Call side identifier from query param or socket ID
-  const callSid = req.url.split('?')[1]?.split('=')[1] || `WS-${ws.socket.id}`;
-  const from = req.url.split('?')[2]?.split('=')[1] || null;
-
-  ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({
-    type: 'connected',
-    callSid,
-    from
-  }));
-
-  ws.on('message', (data) => {
-    try {
-      const message = typeof data === 'string' ? { text: data } : JSON.parse(data);
-      console.log(`📤 WS message for ${callSid}:`, message.type || 'audio');
-
-      // Handle different message types
-      if (message.type === 'start') {
-        console.log(`🎤 Call started: ${callSid}`);
-      } else if (message.type === 'end') {
-        console.log(`⏹️ Call ended: ${callSid}`);
-      } else if (message.type === 'stt') {
-        // Forward transcript to separate handler
-        sttHandler(req, {
-          json: (data) => ({
-            CallSid: callSid,
-            ...data
-          })
-        }, {
-          send: (res) => {
-            res.status(200).json(res);
-          }
-        });
-      }
-    } catch (err) {
-      console.error('❌ WS message error:', err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log(`❌ WebSocket disconnected: ${callSid}`);
-  });
-
-  ws.on('error', (err) => {
-    console.error('❌ WebSocket error:', err);
-  });
+  streamHandler(ws, req);
 });
 
 // Start HTTP server

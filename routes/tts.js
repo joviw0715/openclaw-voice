@@ -3,9 +3,13 @@
  * Uses ElevenLabs API to convert text to speech
  */
 
-import { Processor } from 'whisper-node';
 import axios from 'axios';
 import { getCallSession } from './session.js';
+
+/**
+ * Predefined ElevenLabs voice ID for quick access
+ */
+export const predefinedVoice = process.env.ELEVENLABS_VOICE || '21m00Tcm4TlvDq8ikWAM';
 
 export async function ttsHandler(req, res) {
   try {
@@ -23,18 +27,18 @@ export async function ttsHandler(req, res) {
       return res.status(500).json({ error: 'ElevenLabs not configured' });
     }
 
-    // Voice options
+    // Voice options (ElevenLabs voice IDs)
     const availableVoices = [
       '21m00Tcm4TlvDq8ikWAM', // Rachel (default)
       'EXAVITQu4vr4xnSDxMaL', // Adam
       'HzWkd5FlvfDfxH08Kthc', // Bella
-      'AZnzlk1XvdvUeBnXmlld',  'Claire', // Conrad
-      'JEoC8xnYFwFebhGdnghn', 'Domi', // Drew
-      'ilDhdC31VqMovYr2mrCR', 'Elliott', //Jessica 16
-      'FIMQrVypsGrQ1a6hkdBS', 'Rachel',  'Matthew'  // Sarah
+      'AZnzlk1XvdvUeBnXmlld', // Conrad
+      'JEoC8xnYFwFebhGdnghn', // Drew
+      'ilDhdC31VqMovYr2mrCR', // Jessica
+      'FIMQrVypsGrQ1a6hkdBS'  // Sarah
     ];
 
-    const selectedVoice = voice || ElevenLabs predefinedVoice || availableVoices[0];
+    const selectedVoice = voice || predefinedVoice || availableVoices[0];
 
     // Generate audio using ElevenLabs
     const response = await axios.post(
@@ -62,7 +66,7 @@ export async function ttsHandler(req, res) {
     if (req.query.format === 'base64') {
       const base64Audio = Buffer.from(response.data).toString('base64');
       res.json({
-        audio,
+        audio: base64Audio,
         format: 'mp3',
         CallSid
       });
@@ -83,8 +87,3 @@ export async function ttsHandler(req, res) {
     });
   }
 }
-
-/**
- * Predefined ElevenLabs voices for quick access
- */
-export const predefinedVoice = process.env.ELEVENLABS_VOICE || '21m00Tcm4TlvDq8ikWAM';

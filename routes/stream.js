@@ -1,13 +1,17 @@
+import { WebSocket } from 'ws';
+import axios from 'axios';
+
 /**
  * Media Stream WebSocket Handler
  * Bi-directional audio streaming between Twilio and Whisper/TTS
  */
 
 export function streamHandler(ws, req) {
-  // Call side identifier
-  const callSid = req.url.split('?')[1]?.split('=')[1] || `WS-${Math.random().toString(36).substr(2, 9)}`;
-  const from = req.url.split('?')[2]?.split('=')[1] || null;
-  const to = req.url.split('?')[3]?.split('=')[1] || null;
+  const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
+  const params = new URLSearchParams(queryString);
+  const callSid = params.get('CallSid') || `WS-${Math.random().toString(36).substr(2, 9)}`;
+  const from = params.get('From') || null;
+  const to = params.get('To') || null;
 
   console.log(`🔗 WS stream connected: ${callSid}`);
   console.log(`  From: ${from}`);

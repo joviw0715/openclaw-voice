@@ -5,15 +5,31 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 const execAsync = promisify(exec);
 
 /**
- * Handle STT request (audio chunks signaled via WebSocket)
+ * Handle STT request — accepts base64-encoded audio via HTTP POST
+ * Body: { audio: <base64 string>, format: 'mulaw'|'pcm', CallSid: string }
  */
 export async function sttHandler(req, res) {
-  // This is the HTTP endpoint that receives individual audio chunks
-  // For a more efficient implementation, audio would be streamed continuously
+  try {
+    const { audio, format = 'mulaw', CallSid } = req.body;
+
+    if (!audio) {
+      return res.status(400).json({ error: 'Audio data required' });
+    }
+
+    const audioBuffer = Buffer.from(audio, 'base64');
+    const transcript = await transcribeAudio(audioBuffer, format);
+
+    res.json({ transcript, CallSid });
+  } catch (err) {
+    console.error('❌ STT handler error:', err);
+    res.status(500).json({ error: 'Transcription failed' });
+  }
 }
 
 /**
@@ -39,13 +55,11 @@ export async function transcribeAudio(audioBuffer, format = 'mulaw') {
     }
 
     // Create temporary audio file
-    const fs = require('fs').promises;
-    const path = require('path');
     const tmpDir = '/tmp/audio-transcribe';
     await fs.mkdir(tmpDir, { recursive: true });
 
     const filename = `audio-${Date.now()}.${format}`;
-    const filepath = path.join(tmpDir, filename);
+    const filepath = join(tmpDir, filename);
 
     // Write audio file
     await fs.writeFile(filepath, audioBuffer);
@@ -79,35 +93,6 @@ export async function transcribeAudio(audioBuffer, format = 'mulaw') {
   } catch (err) {
     console.error('❌ STT error:', err);
     throw err;
-  }
-}
-
-/**
- * Handle incoming audio via HTTP POST
- * This can receive base64-encoded audio chunks
- */
-export async function audioHandler(req, res) {
-  try {
-    const { audio, format = 'mulaw' } = req.body;
-
-    if (!audio) {
-      return res.status(400).json({ error: 'Audio data required' });
-    }
-
-    // Decode base64 audio
-    const audioBuffer = Buffer.from(audio, 'base64');
-
-    // Transcribe
-    const transcript = await transcribeAudio(audioBuffer, format);
-
-    res.json({
-      transcript,
-      CallSid: req.body.CallSid
-    });
-
-  } catch (err) {
-    console.error('❌ Audio handler error:', err);
-    res.status(500).json({ error: 'Transcription failed' });
   }
 }
 
