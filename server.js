@@ -7,6 +7,7 @@ import { webhookHandler } from './routes/webhook.js';
 import { streamHandler } from './routes/stream.js';
 import { sttHandler } from './routes/stt.js';
 import { ttsHandler } from './routes/tts.js';
+import { outboundCallHandler } from './routes/call.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 
 // Routes
 app.post('/voice/webhook', webhookHandler);
+app.post('/voice/call', outboundCallHandler);
 app.post('/voice/stt', sttHandler);
 app.post('/voice/tts', ttsHandler);
 app.get('/health', (req, res) => {
